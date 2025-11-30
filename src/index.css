@@ -1,0 +1,228 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Syrian-inspired color scheme - Dark theme with golden accents */
+    --background: 220 20% 4%; /* Deep dark blue-black */
+    --foreground: 45 30% 95%; /* Warm off-white */
+
+    --card: 220 18% 8%;
+    --card-foreground: 45 30% 95%;
+
+    --popover: 220 18% 8%;
+    --popover-foreground: 45 30% 95%;
+
+    /* Primary: Syrian Green */
+    --primary: 156 100% 20%;
+    --primary-foreground: 45 30% 95%;
+
+    /* Secondary: Deep olive */
+    --secondary: 156 40% 15%;
+    --secondary-foreground: 45 30% 95%;
+
+    --muted: 220 15% 15%;
+    --muted-foreground: 220 10% 60%;
+
+    /* Accent: Golden */
+    --accent: 43 74% 49%;
+    --accent-foreground: 220 20% 4%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 45 30% 95%;
+
+    --border: 220 15% 18%;
+    --input: 220 15% 18%;
+    --ring: 156 100% 30%;
+
+    --radius: 0.75rem;
+  }
+
+  /* Light theme option */
+  .light {
+    --background: 45 30% 97%;
+    --foreground: 220 20% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 10%;
+
+    --primary: 156 100% 25%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 45 20% 92%;
+    --secondary-foreground: 220 20% 10%;
+
+    --muted: 45 20% 95%;
+    --muted-foreground: 220 10% 40%;
+
+    --accent: 43 74% 49%;
+    --accent-foreground: 220 20% 10%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 45 15% 88%;
+    --input: 45 15% 88%;
+    --ring: 156 100% 25%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    direction: rtl;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-tajawal antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Arabic typography optimizations */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display font-bold tracking-tight;
+    text-wrap: balance;
+  }
+
+  p {
+    @apply leading-relaxed;
+    text-wrap: pretty;
+  }
+
+  /* Numbers should use tabular figures */
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Arabic numeral styling */
+  .arabic-nums {
+    font-feature-settings: "locl" 1;
+  }
+}
+
+@layer components {
+  /* Glowing text effect */
+  .text-glow {
+    text-shadow: 0 0 30px hsl(var(--accent) / 0.5);
+  }
+
+  /* Gradient text */
+  .text-gradient {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(
+      135deg,
+      hsl(var(--accent)) 0%,
+      hsl(43 90% 60%) 50%,
+      hsl(var(--accent)) 100%
+    );
+  }
+
+  /* Card with glow */
+  .card-glow {
+    @apply relative overflow-hidden;
+  }
+
+  .card-glow::before {
+    content: '';
+    @apply absolute inset-0 opacity-0 transition-opacity duration-500;
+    background: radial-gradient(
+      600px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+      hsl(var(--accent) / 0.1),
+      transparent 40%
+    );
+  }
+
+  .card-glow:hover::before {
+    @apply opacity-100;
+  }
+
+  /* Shimmer effect for loading states */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--muted-foreground) / 0.1) 50%,
+      hsl(var(--muted)) 100%
+    );
+    background-size: 200% 100%;
+    @apply animate-shimmer;
+  }
+
+  /* Geometric pattern background */
+  .pattern-bg {
+    background-image: 
+      radial-gradient(circle at 25% 25%, hsl(var(--primary) / 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 75% 75%, hsl(var(--accent) / 0.05) 0%, transparent 50%);
+  }
+
+  /* Noise texture overlay */
+  .noise-overlay {
+    @apply pointer-events-none fixed inset-0 z-50 opacity-[0.015];
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+  }
+
+  /* Glass morphism */
+  .glass {
+    @apply backdrop-blur-xl bg-card/80 border border-border/50;
+  }
+
+  /* Animated gradient border */
+  .gradient-border {
+    @apply relative;
+  }
+
+  .gradient-border::before {
+    content: '';
+    @apply absolute -inset-px rounded-[inherit] -z-10;
+    background: linear-gradient(
+      var(--gradient-angle, 45deg),
+      hsl(var(--primary)),
+      hsl(var(--accent)),
+      hsl(var(--primary))
+    );
+    animation: gradient-rotate 3s linear infinite;
+  }
+
+  @keyframes gradient-rotate {
+    0% { --gradient-angle: 0deg; }
+    100% { --gradient-angle: 360deg; }
+  }
+
+  @property --gradient-angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+  }
+}
+
+@layer utilities {
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Animation delays for staggered animations */
+  .animation-delay-100 { animation-delay: 100ms; }
+  .animation-delay-200 { animation-delay: 200ms; }
+  .animation-delay-300 { animation-delay: 300ms; }
+  .animation-delay-400 { animation-delay: 400ms; }
+  .animation-delay-500 { animation-delay: 500ms; }
+  .animation-delay-700 { animation-delay: 700ms; }
+  .animation-delay-1000 { animation-delay: 1000ms; }
+}

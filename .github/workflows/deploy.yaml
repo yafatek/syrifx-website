@@ -1,0 +1,197 @@
+# =============================================================================
+# SyriFX Website - CI/CD Deployment Pipeline
+# =============================================================================
+#
+# Deployment Strategy:
+#   - Push to main branch    → deploys to staging (stg.syrifx.com)
+#   - Create tag (v*)        → deploys to production (syrifx.com)
+#
+# Security:
+#   - Uses OIDC for AWS authentication (no stored credentials)
+#   - GitHub assumes IAM role with temporary credentials
+#
+# =============================================================================
+
+name: Deploy Website
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+
+# Required for OIDC authentication with AWS
+permissions:
+  id-token: write
+  contents: read
+
+# Prevent concurrent deployments to the same environment
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ===========================================================================
+  # Build Job - Runs on all pushes and PRs
+  # ===========================================================================
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run lint
+
+      - name: Build
+        run: npm run build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 1
+
+  # ===========================================================================
+  # Deploy to Staging - Runs on push to main branch
+  # ===========================================================================
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment:
+      name: staging
+      url: https://stg.syrifx.com
+    
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: syrifx-website-staging-deploy
+
+      - name: Sync to S3
+        run: |
+          # Sync all assets with long cache (immutable)
+          aws s3 sync dist/ s3://${{ vars.S3_BUCKET }}/ \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html" \
+            --exclude "*.json"
+          
+          # Upload index.html with no cache for instant updates
+          aws s3 cp dist/index.html s3://${{ vars.S3_BUCKET }}/index.html \
+            --cache-control "public, max-age=0, must-revalidate"
+          
+          # Upload any JSON files with no cache
+          find dist -name "*.json" -exec aws s3 cp {} s3://${{ vars.S3_BUCKET }}/ \
+            --cache-control "public, max-age=0, must-revalidate" \; 2>/dev/null || true
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ vars.CLOUDFRONT_DIST_ID }} \
+            --paths "/*"
+
+      - name: Deployment summary
+        run: |
+          echo "## 🚀 Staging Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** https://stg.syrifx.com" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+
+  # ===========================================================================
+  # Deploy to Production - Runs on tag push (v*)
+  # ===========================================================================
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    environment:
+      name: production
+      url: https://syrifx.com
+    
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: syrifx-website-production-deploy
+
+      - name: Sync to S3
+        run: |
+          # Sync all assets with long cache (immutable)
+          aws s3 sync dist/ s3://${{ vars.S3_BUCKET }}/ \
+            --delete \
+            --cache-control "public, max-age=31536000, immutable" \
+            --exclude "index.html" \
+            --exclude "*.json"
+          
+          # Upload index.html with no cache for instant updates
+          aws s3 cp dist/index.html s3://${{ vars.S3_BUCKET }}/index.html \
+            --cache-control "public, max-age=0, must-revalidate"
+          
+          # Upload any JSON files with no cache
+          find dist -name "*.json" -exec aws s3 cp {} s3://${{ vars.S3_BUCKET }}/ \
+            --cache-control "public, max-age=0, must-revalidate" \; 2>/dev/null || true
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ vars.CLOUDFRONT_DIST_ID }} \
+            --paths "/*"
+
+      - name: Get release info
+        id: release
+        run: |
+          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Deployment summary
+        run: |
+          echo "## 🎉 Production Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** https://syrifx.com" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${{ steps.release.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
