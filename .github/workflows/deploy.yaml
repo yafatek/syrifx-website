@@ -8,7 +8,6 @@
 #
 # Security:
 #   - Uses OIDC for AWS authentication (no stored credentials)
-#   - GitHub assumes IAM role with temporary credentials
 #
 # =============================================================================
 
@@ -24,45 +23,52 @@ on:
     branches:
       - main
 
-# Required for OIDC authentication with AWS
 permissions:
   id-token: write
   contents: read
 
-# Prevent concurrent deployments to the same environment
 concurrency:
   group: deploy-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   NODE_VERSION: '20'
+  PNPM_VERSION: '9'
 
 jobs:
   # ===========================================================================
-  # Build Job - Runs on all pushes and PRs
+  # Build & Test
   # ===========================================================================
   build:
-    name: Build
+    name: Build & Test
     runs-on: ubuntu-latest
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: 'npm'
+          cache: 'pnpm'
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Type check
-        run: npm run lint
+        run: pnpm run typecheck
+
+      - name: Lint
+        run: pnpm run lint
 
       - name: Build
-        run: npm run build
+        run: pnpm run build
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
@@ -72,7 +78,7 @@ jobs:
           retention-days: 1
 
   # ===========================================================================
-  # Deploy to Staging - Runs on push to main branch
+  # Deploy to Staging
   # ===========================================================================
   deploy-staging:
     name: Deploy to Staging
@@ -95,43 +101,33 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
-          role-session-name: syrifx-website-staging-deploy
+          role-session-name: syrifx-website-staging
 
-      - name: Sync to S3
+      - name: Deploy to S3
         run: |
-          # Sync all assets with long cache (immutable)
           aws s3 sync dist/ s3://${{ vars.S3_BUCKET }}/ \
             --delete \
             --cache-control "public, max-age=31536000, immutable" \
             --exclude "index.html" \
             --exclude "*.json"
           
-          # Upload index.html with no cache for instant updates
           aws s3 cp dist/index.html s3://${{ vars.S3_BUCKET }}/index.html \
             --cache-control "public, max-age=0, must-revalidate"
-          
-          # Upload any JSON files with no cache
-          find dist -name "*.json" -exec aws s3 cp {} s3://${{ vars.S3_BUCKET }}/ \
-            --cache-control "public, max-age=0, must-revalidate" \; 2>/dev/null || true
 
-      - name: Invalidate CloudFront cache
+      - name: Invalidate CloudFront
         run: |
           aws cloudfront create-invalidation \
             --distribution-id ${{ vars.CLOUDFRONT_DIST_ID }} \
             --paths "/*"
 
-      - name: Deployment summary
+      - name: Summary
         run: |
-          echo "## 🚀 Staging Deployment Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🚀 Deployed to Staging" >> $GITHUB_STEP_SUMMARY
           echo "**URL:** https://stg.syrifx.com" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Time:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** \`${GITHUB_SHA::7}\`" >> $GITHUB_STEP_SUMMARY
 
   # ===========================================================================
-  # Deploy to Production - Runs on tag push (v*)
+  # Deploy to Production
   # ===========================================================================
   deploy-production:
     name: Deploy to Production
@@ -154,44 +150,27 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
-          role-session-name: syrifx-website-production-deploy
+          role-session-name: syrifx-website-production
 
-      - name: Sync to S3
+      - name: Deploy to S3
         run: |
-          # Sync all assets with long cache (immutable)
           aws s3 sync dist/ s3://${{ vars.S3_BUCKET }}/ \
             --delete \
             --cache-control "public, max-age=31536000, immutable" \
             --exclude "index.html" \
             --exclude "*.json"
           
-          # Upload index.html with no cache for instant updates
           aws s3 cp dist/index.html s3://${{ vars.S3_BUCKET }}/index.html \
             --cache-control "public, max-age=0, must-revalidate"
-          
-          # Upload any JSON files with no cache
-          find dist -name "*.json" -exec aws s3 cp {} s3://${{ vars.S3_BUCKET }}/ \
-            --cache-control "public, max-age=0, must-revalidate" \; 2>/dev/null || true
 
-      - name: Invalidate CloudFront cache
+      - name: Invalidate CloudFront
         run: |
           aws cloudfront create-invalidation \
             --distribution-id ${{ vars.CLOUDFRONT_DIST_ID }} \
             --paths "/*"
 
-      - name: Get release info
-        id: release
+      - name: Summary
         run: |
-          echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
-
-      - name: Deployment summary
-        run: |
-          echo "## 🎉 Production Deployment Complete" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "## 🎉 Deployed to Production" >> $GITHUB_STEP_SUMMARY
           echo "**URL:** https://syrifx.com" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** \`${{ steps.release.outputs.tag }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Commit:** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "**Time:** $(date -u '+%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** \`${GITHUB_REF#refs/tags/}\`" >> $GITHUB_STEP_SUMMARY

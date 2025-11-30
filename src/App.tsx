@@ -1,511 +1,709 @@
-import { motion } from 'framer-motion'
+import { useEffect, useState, useRef } from 'react'
+import { motion, useScroll, useTransform, useInView, AnimatePresence } from 'framer-motion'
 import { 
   TrendingUp, 
+  TrendingDown,
   Bell, 
   Zap, 
   Shield, 
-  Globe, 
-  Clock,
   ArrowLeft,
   Sparkles,
-  MessageCircle,
+  Send,
+  Check,
   ChevronDown,
+  DollarSign,
+  Coins,
+  MessageCircle,
+  Clock,
+  Search,
+  CheckCircle2,
+  ChevronLeft,
 } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
-// Animation variants
-const fadeInUp = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { 
-    opacity: 1, 
-    y: 0,
-    transition: { duration: 0.6, ease: "easeOut" }
-  }
-}
+// =============================================================================
+// ANIMATED COUNTER
+// =============================================================================
+function AnimatedCounter({ value, suffix = '' }: { value: number; suffix?: string }) {
+  const [count, setCount] = useState(0)
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: true })
 
-const staggerContainer = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.2
-    }
-  }
-}
+  useEffect(() => {
+    if (!isInView) return
+    let start = 0
+    const duration = 2000
+    const increment = value / (duration / 16)
+    const timer = setInterval(() => {
+      start += increment
+      if (start >= value) {
+        setCount(value)
+        clearInterval(timer)
+      } else {
+        setCount(Math.floor(start))
+      }
+    }, 16)
+    return () => clearInterval(timer)
+  }, [isInView, value])
 
-const scaleIn = {
-  hidden: { opacity: 0, scale: 0.9 },
-  visible: { 
-    opacity: 1, 
-    scale: 1,
-    transition: { duration: 0.5, ease: "easeOut" }
-  }
-}
-
-// Feature data
-const features = [
-  {
-    icon: TrendingUp,
-    title: "أسعار فورية",
-    description: "تحديثات كل 5 دقائق من مصادر موثوقة للسوق السوداء والرسمي",
-    color: "text-accent",
-    bgColor: "bg-accent/10",
-  },
-  {
-    icon: Bell,
-    title: "تنبيهات ذكية",
-    description: "احصل على إشعار فوري عندما يصل السعر لهدفك",
-    color: "text-syrian-green",
-    bgColor: "bg-syrian-green/10",
-  },
-  {
-    icon: Zap,
-    title: "سريع وخفيف",
-    description: "مبني على تقنية Rust للحصول على ردود فورية",
-    color: "text-yellow-500",
-    bgColor: "bg-yellow-500/10",
-  },
-  {
-    icon: Shield,
-    title: "آمن وموثوق",
-    description: "لا نخزن أي بيانات شخصية - خصوصيتك أولويتنا",
-    color: "text-blue-400",
-    bgColor: "bg-blue-400/10",
-  },
-  {
-    icon: Globe,
-    title: "متعدد العملات",
-    description: "دولار، يورو، ليرة تركية، وأسعار الذهب",
-    color: "text-purple-400",
-    bgColor: "bg-purple-400/10",
-  },
-  {
-    icon: Clock,
-    title: "متاح 24/7",
-    description: "البوت يعمل على مدار الساعة بدون توقف",
-    color: "text-pink-400",
-    bgColor: "bg-pink-400/10",
-  },
-]
-
-// Commands data
-const commands = [
-  { cmd: "/rate", desc: "عرض أسعار الصرف الحالية", alias: "/سعر" },
-  { cmd: "/convert", desc: "تحويل المبالغ بين العملات", alias: "/تحويل" },
-  { cmd: "/gold", desc: "أسعار الذهب اليوم", alias: "/ذهب" },
-  { cmd: "/alert", desc: "إنشاء تنبيه لسعر معين", alias: "/تنبيه" },
-  { cmd: "/help", desc: "عرض المساعدة", alias: "/مساعدة" },
-]
-
-// Stats
-const stats = [
-  { value: "٢٤/٧", label: "متاح دائماً" },
-  { value: "٥ دق", label: "تحديث مستمر" },
-  { value: "مجاني", label: "بدون رسوم" },
-  { value: "فوري", label: "رد سريع" },
-]
-
-function App() {
   return (
-    <div className="min-h-screen bg-background pattern-bg overflow-x-hidden">
-      {/* Noise overlay for texture */}
-      <div className="noise-overlay" />
-      
-      {/* Gradient orbs for ambiance */}
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 -right-1/4 w-[600px] h-[600px] bg-primary/20 rounded-full blur-[128px]" />
-        <div className="absolute bottom-1/4 -left-1/4 w-[600px] h-[600px] bg-accent/10 rounded-full blur-[128px]" />
+    <span ref={ref} className="tabular-nums">
+      {count.toLocaleString('ar-SY')}{suffix}
+    </span>
+  )
+}
+
+// =============================================================================
+// CURRENCY CARD
+// =============================================================================
+function CurrencyCard({ 
+  currency, 
+  flag, 
+  rate, 
+  change, 
+  delay = 0,
+}: { 
+  currency: string
+  flag: string
+  rate: string
+  change: number
+  delay?: number
+}) {
+  const isPositive = change >= 0
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 30 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay, ease: [0.16, 1, 0.3, 1] }}
+      whileHover={{ y: -5, scale: 1.02 }}
+      className="group relative"
+    >
+      <div className="absolute -inset-0.5 bg-gradient-to-r from-accent/20 to-primary/20 rounded-2xl blur opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      <div className="relative bg-zinc-900/80 backdrop-blur-xl border border-zinc-800 rounded-2xl p-5 h-full">
+        <div className="flex items-center gap-3 mb-3">
+          <span className="text-2xl">{flag}</span>
+          <span className="text-zinc-400 text-sm font-medium">{currency}</span>
+        </div>
+        <div className="flex items-end justify-between">
+          <div className="text-2xl font-bold text-white font-mono tracking-tight" dir="ltr">
+            {rate}
+          </div>
+          <div className={cn(
+            "flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-bold",
+            isPositive 
+              ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+              : "bg-red-500/10 text-red-400 border border-red-500/20"
+          )}>
+            {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+            <span dir="ltr">{isPositive ? '+' : ''}{change}%</span>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+// =============================================================================
+// STEP CARD - How it works
+// =============================================================================
+function StepCard({ number, title, description, icon: Icon }: {
+  number: number
+  title: string
+  description: string
+  icon: React.ElementType
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="relative"
+    >
+      <div className="flex gap-4">
+        <div className="flex-shrink-0 w-12 h-12 rounded-2xl bg-accent/10 border border-accent/20 flex items-center justify-center">
+          <Icon className="w-6 h-6 text-accent" />
+        </div>
+        <div>
+          <div className="text-accent text-sm font-bold mb-1">الخطوة {number}</div>
+          <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
+          <p className="text-zinc-400 text-sm leading-relaxed">{description}</p>
+        </div>
+      </div>
+    </motion.div>
+  )
+}
+
+// =============================================================================
+// FAQ ITEM
+// =============================================================================
+function FAQItem({ question, answer }: { question: string; answer: string }) {
+  const [isOpen, setIsOpen] = useState(false)
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="border-b border-zinc-800"
+    >
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full py-5 flex items-center justify-between gap-4 text-right"
+      >
+        <span className="font-bold text-white">{question}</span>
+        <ChevronLeft className={cn(
+          "w-5 h-5 text-zinc-400 transition-transform",
+          isOpen && "rotate-90"
+        )} />
+      </button>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <p className="pb-5 text-zinc-400 leading-relaxed">{answer}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  )
+}
+
+// =============================================================================
+// TELEGRAM CHAT
+// =============================================================================
+function TelegramChat() {
+  const [messages, setMessages] = useState<Array<{type: 'user' | 'bot', text: string, isTyping?: boolean}>>([])
+  const [, setStep] = useState(0)
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: true, margin: "-100px" })
+
+  useEffect(() => {
+    if (!isInView) return
+    
+    const chatSequence = [
+      { type: 'user' as const, text: '/rate' },
+      { type: 'bot' as const, text: 'loading' },
+      { type: 'bot' as const, text: 'rates' },
+      { type: 'user' as const, text: '/convert 500' },
+      { type: 'bot' as const, text: 'loading' },
+      { type: 'bot' as const, text: 'convert' },
+    ]
+    
+    const timer = setInterval(() => {
+      setStep(prev => {
+        if (prev >= chatSequence.length) {
+          clearInterval(timer)
+          return prev
+        }
+        const currentStep = chatSequence[prev]
+        if (currentStep.text === 'loading') {
+          setMessages(msgs => [...msgs, { type: 'bot', text: '', isTyping: true }])
+        } else if (currentStep.text === 'rates') {
+          setMessages(msgs => {
+            const newMsgs = msgs.filter(m => !m.isTyping)
+            return [...newMsgs, { type: 'bot', text: 'rates' }]
+          })
+        } else if (currentStep.text === 'convert') {
+          setMessages(msgs => {
+            const newMsgs = msgs.filter(m => !m.isTyping)
+            return [...newMsgs, { type: 'bot', text: 'convert' }]
+          })
+        } else {
+          setMessages(msgs => [...msgs, currentStep])
+        }
+        return prev + 1
+      })
+    }, 1200)
+    return () => clearInterval(timer)
+  }, [isInView])
+
+  return (
+    <div ref={ref} className="relative">
+      <div className="relative mx-auto w-[280px]">
+        <div className="absolute -inset-8 bg-gradient-to-b from-accent/20 via-primary/10 to-transparent blur-3xl" />
+        <motion.div
+          initial={{ opacity: 0, y: 50 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+          className="relative bg-zinc-800 rounded-[2.5rem] p-2 shadow-2xl border border-zinc-700"
+        >
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 w-20 h-5 bg-black rounded-full z-10" />
+          <div className="bg-zinc-950 rounded-[2rem] overflow-hidden">
+            <div className="bg-primary pt-8 pb-3 px-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-accent to-yellow-500 flex items-center justify-center">
+                  <span className="text-lg font-black text-black">س</span>
+                </div>
+                <div>
+                  <div className="font-bold text-white">سيري إف إكس</div>
+                  <div className="text-xs text-white/60 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full" />
+                    متصل
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="h-[320px] p-3 space-y-2 overflow-hidden">
+              <AnimatePresence>
+                {messages.map((msg, i) => (
+                  <motion.div
+                    key={i}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={cn("flex", msg.type === 'user' ? "justify-start" : "justify-end")}
+                  >
+                    {msg.isTyping ? (
+                      <div className="bg-zinc-800 rounded-2xl rounded-br-sm px-4 py-3">
+                        <div className="flex gap-1">
+                          {[0,1,2].map(i => (
+                            <span key={i} className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: `${i*150}ms` }} />
+                          ))}
+                        </div>
+                      </div>
+                    ) : msg.type === 'user' ? (
+                      <div className="bg-primary text-white rounded-2xl rounded-bl-sm px-4 py-2 text-sm">{msg.text}</div>
+                    ) : msg.text === 'rates' ? (
+                      <div className="bg-zinc-800 rounded-2xl rounded-br-sm p-3 max-w-[85%]">
+                        <div className="text-accent text-xs font-bold mb-2 flex items-center gap-1">
+                          <Coins className="w-3 h-3" />
+                          أسعار اليوم
+                        </div>
+                        <div className="space-y-1.5 text-xs">
+                          {[
+                            { flag: '🇺🇸', name: 'دولار', rate: '12,025' },
+                            { flag: '🇪🇺', name: 'يورو', rate: '12,650' },
+                            { flag: '🥇', name: 'ذهب', rate: '485,000' },
+                          ].map((item, i) => (
+                            <div key={i} className="flex justify-between gap-4">
+                              <span className="text-zinc-400">{item.flag} {item.name}</span>
+                              <span className="font-mono text-white" dir="ltr">{item.rate}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="text-[9px] text-zinc-500 mt-2 flex items-center gap-1">
+                          <Check className="w-2.5 h-2.5 text-emerald-500" />
+                          منذ ٣ دقائق
+                        </div>
+                      </div>
+                    ) : msg.text === 'convert' ? (
+                      <div className="bg-zinc-800 rounded-2xl rounded-br-sm p-3">
+                        <div className="text-accent text-xs font-bold mb-2">💱 تحويل</div>
+                        <div className="bg-zinc-900 rounded-xl p-2 text-center">
+                          <div className="text-zinc-400 text-[10px]">$500 =</div>
+                          <div className="text-xl font-black text-white" dir="ltr">6,012,500</div>
+                          <div className="text-accent text-xs font-bold">ليرة سورية</div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+            <div className="p-2 bg-zinc-900 border-t border-zinc-800">
+              <div className="flex items-center gap-2 bg-zinc-800 rounded-full px-3 py-2">
+                <input type="text" placeholder="اكتب رسالة..." className="flex-1 bg-transparent text-xs text-white placeholder:text-zinc-500 outline-none" readOnly />
+                <Send className="w-4 h-4 text-accent" />
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    </div>
+  )
+}
+
+// =============================================================================
+// FEATURE CARD
+// =============================================================================
+function FeatureCard({ icon: Icon, title, description, gradient, delay = 0 }: { 
+  icon: React.ElementType; title: string; description: string; gradient: string; delay?: number 
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      transition={{ duration: 0.5, delay }}
+      className="group"
+    >
+      <div className="relative h-full bg-zinc-900/50 border border-zinc-800 rounded-2xl p-6 hover:border-zinc-700 transition-colors">
+        <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center mb-4 bg-gradient-to-br", gradient)}>
+          <Icon className="w-6 h-6 text-white" />
+        </div>
+        <h3 className="text-lg font-bold text-white mb-2">{title}</h3>
+        <p className="text-zinc-400 text-sm leading-relaxed">{description}</p>
+      </div>
+    </motion.div>
+  )
+}
+
+// =============================================================================
+// MAIN APP
+// =============================================================================
+export default function App() {
+  const { scrollYProgress } = useScroll()
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.15], [1, 0])
+
+  return (
+    <div className="min-h-screen bg-zinc-950 text-white overflow-x-hidden font-tajawal">
+      {/* Background */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[150px]" />
+        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-accent/5 rounded-full blur-[150px]" />
       </div>
 
-      {/* Header */}
-      <header className="fixed top-0 inset-x-0 z-50">
-        <div className="glass border-b border-border/50">
-          <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="flex items-center gap-3"
-            >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <span className="text-xl font-bold text-white">س</span>
-              </div>
-              <span className="text-xl font-bold">سيري إف إكس</span>
-            </motion.div>
-            
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-            >
-              <Button variant="glow" size="sm" asChild>
-                <a href="https://t.me/SyriFXBot" target="_blank" rel="noopener noreferrer">
-                  <MessageCircle className="h-4 w-4" />
-                  ابدأ الآن
-                </a>
-              </Button>
-            </motion.div>
+      {/* ================================================================= */}
+      {/* HEADER */}
+      {/* ================================================================= */}
+      <header className="fixed top-0 inset-x-0 z-50 px-4 py-4">
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-5xl mx-auto flex items-center justify-between bg-zinc-900/80 backdrop-blur-xl border border-zinc-800 rounded-2xl px-5 py-3"
+        >
+          <div className="flex items-center gap-2">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+              <span className="text-lg font-black text-white">س</span>
+            </div>
+            <span className="font-bold text-lg">سيري إف إكس</span>
           </div>
-        </div>
+          <motion.a
+            href="https://t.me/SyriFXBot"
+            target="_blank"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="bg-accent hover:bg-accent/90 text-black font-bold px-5 py-2 rounded-xl text-sm flex items-center gap-2"
+          >
+            جربه الآن
+            <ArrowLeft className="w-4 h-4" />
+          </motion.a>
+        </motion.div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center pt-16">
-        <div className="container mx-auto px-4 py-20">
+      {/* ================================================================= */}
+      {/* HERO */}
+      {/* ================================================================= */}
+      <motion.section style={{ opacity: heroOpacity }} className="relative min-h-screen flex items-center justify-center pt-20 pb-10 px-4">
+        <div className="max-w-5xl mx-auto text-center">
           <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
-            className="text-center max-w-4xl mx-auto"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 text-accent text-sm font-medium mb-8"
           >
-            {/* Badge */}
-            <motion.div variants={fadeInUp}>
-              <Badge variant="accent" className="mb-6 text-sm px-4 py-1.5">
-                <Sparkles className="h-3.5 w-3.5 ml-1.5" />
-                مجاني بالكامل
-              </Badge>
-            </motion.div>
-
-            {/* Main headline */}
-            <motion.h1 
-              variants={fadeInUp}
-              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black mb-6 leading-tight"
-            >
-              أسعار الصرف السورية
-              <br />
-              <span className="text-gradient">لحظة بلحظة</span>
-            </motion.h1>
-
-            {/* Subheadline */}
-            <motion.p 
-              variants={fadeInUp}
-              className="text-lg sm:text-xl md:text-2xl text-muted-foreground mb-10 max-w-2xl mx-auto"
-            >
-              بوت تيليجرام لمتابعة سعر صرف الليرة السورية مقابل الدولار واليورو والذهب
-              <br />
-              <span className="text-foreground">سريع • موثوق • مجاني</span>
-            </motion.p>
-
-            {/* CTA Buttons */}
-            <motion.div 
-              variants={fadeInUp}
-              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
-            >
-              <Button variant="glow" size="xl" asChild className="w-full sm:w-auto">
-                <a href="https://t.me/SyriFXBot" target="_blank" rel="noopener noreferrer">
-                  <MessageCircle className="h-5 w-5" />
-                  افتح في تيليجرام
-                  <ArrowLeft className="h-5 w-5 mr-2" />
-                </a>
-              </Button>
-              <Button variant="outline" size="xl" asChild className="w-full sm:w-auto">
-                <a href="#features">
-                  اكتشف المزيد
-                  <ChevronDown className="h-5 w-5 mr-1" />
-                </a>
-              </Button>
-            </motion.div>
-
-            {/* Stats */}
-            <motion.div 
-              variants={fadeInUp}
-              className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-16 max-w-2xl mx-auto"
-            >
-              {stats.map((stat, index) => (
-                <div 
-                  key={index}
-                  className="text-center p-4 rounded-xl bg-card/30 backdrop-blur-sm border border-border/30"
-                >
-                  <div className="text-2xl sm:text-3xl font-bold text-accent mb-1">
-                    {stat.value}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {stat.label}
-                  </div>
-                </div>
-              ))}
-            </motion.div>
+            <Sparkles className="w-4 h-4" />
+            مجاني • بدون إعلانات • بدون تسجيل
           </motion.div>
+
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black mb-6 leading-tight"
+          >
+            بدك تعرف سعر الدولار؟
+            <br />
+            <span className="text-accent">خلال ثانية!</span>
+          </motion.h1>
+
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="text-lg sm:text-xl text-zinc-400 mb-10 max-w-xl mx-auto"
+          >
+            بوت تيليجرام بيعطيك سعر الصرف والذهب بشكل فوري.
+            <br />
+            <span className="text-white">بس افتح التيليجرام واكتب الأمر!</span>
+          </motion.p>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16"
+          >
+            <motion.a
+              href="https://t.me/SyriFXBot"
+              target="_blank"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 bg-accent hover:bg-accent/90 text-black font-bold text-lg rounded-2xl"
+            >
+              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161l-1.97 9.281c-.146.658-.537.818-1.084.508l-3-2.211-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.869 4.326-2.96-.924c-.643-.203-.657-.643.136-.953l11.566-4.458c.537-.194 1.006.131.833.939z"/>
+              </svg>
+              افتح البوت
+              <ArrowLeft className="w-5 h-5" />
+            </motion.a>
+            <motion.a
+              href="#how"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 border-2 border-zinc-700 hover:border-zinc-600 text-white font-bold text-lg rounded-2xl"
+            >
+              كيف يشتغل؟
+              <ChevronDown className="w-5 h-5" />
+            </motion.a>
+          </motion.div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
+            <CurrencyCard currency="الدولار" flag="🇺🇸" rate="12,025" change={2.4} delay={0.4} />
+            <CurrencyCard currency="اليورو" flag="🇪🇺" rate="12,650" change={1.8} delay={0.5} />
+            <CurrencyCard currency="الذهب" flag="🥇" rate="485,000" change={-0.5} delay={0.6} />
+          </div>
         </div>
 
-        {/* Scroll indicator */}
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5 }}
-          className="absolute bottom-8 left-1/2 -translate-x-1/2"
-        >
-          <motion.div
-            animate={{ y: [0, 10, 0] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            <ChevronDown className="h-6 w-6 text-muted-foreground" />
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
+          <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="w-5 h-8 rounded-full border-2 border-zinc-600 flex items-start justify-center p-1">
+            <div className="w-1 h-2 bg-accent rounded-full" />
           </motion.div>
-        </motion.div>
-      </section>
+        </div>
+      </motion.section>
 
-      {/* Features Section */}
-      <section id="features" className="py-24 relative">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={staggerContainer}
-            className="text-center mb-16"
-          >
-            <motion.h2 
-              variants={fadeInUp}
-              className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4"
-            >
-              لماذا <span className="text-gradient">سيري إف إكس</span>؟
-            </motion.h2>
-            <motion.p 
-              variants={fadeInUp}
-              className="text-lg text-muted-foreground max-w-xl mx-auto"
-            >
-              صُمم خصيصاً للسوريين لتوفير أدق المعلومات بأسرع وقت
-            </motion.p>
-          </motion.div>
-
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-50px" }}
-            variants={staggerContainer}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-          >
-            {features.map((feature, index) => (
-              <motion.div key={index} variants={scaleIn}>
-                <Card className="h-full card-glow group cursor-default">
-                  <CardContent className="p-6">
-                    <div className={cn(
-                      "w-14 h-14 rounded-2xl flex items-center justify-center mb-4 transition-transform duration-300 group-hover:scale-110",
-                      feature.bgColor
-                    )}>
-                      <feature.icon className={cn("h-7 w-7", feature.color)} />
-                    </div>
-                    <h3 className="text-xl font-bold mb-2">{feature.title}</h3>
-                    <p className="text-muted-foreground">{feature.description}</p>
-                  </CardContent>
-                </Card>
+      {/* ================================================================= */}
+      {/* STATS */}
+      {/* ================================================================= */}
+      <section className="py-16 border-y border-zinc-800/50">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            {[
+              { value: 24, suffix: '/٧', label: 'شغال كل الوقت' },
+              { value: 5, suffix: ' دقايق', label: 'بتحدث الأسعار' },
+              { value: 100, suffix: '%', label: 'ببلاش' },
+              { value: 0, suffix: '', label: 'بدون تعقيد' },
+            ].map((stat, i) => (
+              <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="text-center">
+                <div className="text-3xl sm:text-4xl font-black text-white mb-1">
+                  <AnimatedCounter value={stat.value} suffix={stat.suffix} />
+                </div>
+                <div className="text-zinc-500 text-sm">{stat.label}</div>
               </motion.div>
             ))}
-          </motion.div>
+          </div>
         </div>
       </section>
 
-      {/* Commands Section */}
-      <section className="py-24 relative">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-primary/5 to-transparent" />
-        <div className="container mx-auto px-4 relative">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={staggerContainer}
-            className="max-w-4xl mx-auto"
-          >
-            <motion.div variants={fadeInUp} className="text-center mb-16">
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
-                أوامر <span className="text-gradient">سهلة</span> وبسيطة
-              </h2>
-              <p className="text-lg text-muted-foreground">
-                استخدم هذه الأوامر للحصول على المعلومات التي تحتاجها
-              </p>
-            </motion.div>
-
-            <motion.div variants={fadeInUp} className="space-y-4">
-              {commands.map((command, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, x: 50 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                >
-                  <Card className="overflow-hidden">
-                    <CardContent className="p-0">
-                      <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-6">
-                        <div className="flex items-center gap-3 flex-shrink-0">
-                          <code className="font-mono text-lg font-bold text-accent bg-accent/10 px-4 py-2 rounded-lg">
-                            {command.cmd}
-                          </code>
-                          <span className="text-muted-foreground text-sm">
-                            أو
-                          </span>
-                          <code className="font-mono text-sm text-muted-foreground bg-muted/30 px-3 py-1.5 rounded-lg">
-                            {command.alias}
-                          </code>
-                        </div>
-                        <div className="sm:mr-auto text-muted-foreground">
-                          {command.desc}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Demo/Preview Section */}
-      <section className="py-24 relative">
-        <div className="container mx-auto px-4">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true, margin: "-100px" }}
-            variants={staggerContainer}
-            className="text-center mb-16"
-          >
-            <motion.h2 
-              variants={fadeInUp}
-              className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4"
-            >
-              شاهد <span className="text-gradient">كيف يعمل</span>
+      {/* ================================================================= */}
+      {/* HOW IT WORKS */}
+      {/* ================================================================= */}
+      <section id="how" className="py-24 px-4">
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-16">
+            <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-3xl sm:text-4xl font-black mb-4">
+              كيف بستخدمه؟ <span className="text-accent">سهل كتير!</span>
             </motion.h2>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="max-w-sm mx-auto"
-          >
-            {/* Phone mockup */}
-            <div className="relative">
-              <div className="absolute inset-0 bg-gradient-to-b from-accent/20 to-primary/20 blur-3xl rounded-full" />
-              <div className="relative bg-card rounded-[3rem] p-3 border border-border shadow-2xl">
-                {/* Phone notch */}
-                <div className="absolute top-4 left-1/2 -translate-x-1/2 w-24 h-6 bg-background rounded-full" />
-                
-                {/* Screen */}
-                <div className="bg-background rounded-[2.5rem] overflow-hidden aspect-[9/19]">
-                  {/* Telegram-like UI */}
-                  <div className="h-full flex flex-col">
-                    {/* Header */}
-                    <div className="bg-primary/90 p-4 pt-12 text-primary-foreground">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                          <span className="text-lg font-bold">س</span>
-                        </div>
-                        <div>
-                          <div className="font-bold">سيري إف إكس</div>
-                          <div className="text-xs opacity-75">متصل الآن</div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Chat */}
-                    <div className="flex-1 p-4 space-y-3 bg-muted/30">
-                      {/* User message */}
-                      <div className="flex justify-start">
-                        <div className="bg-primary text-primary-foreground rounded-2xl rounded-tr-sm px-4 py-2 max-w-[80%]">
-                          /rate
-                        </div>
-                      </div>
-
-                      {/* Bot response */}
-                      <div className="flex justify-end">
-                        <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3 max-w-[85%] text-sm">
-                          <div className="font-bold mb-2">📊 أسعار الصرف</div>
-                          <div className="space-y-1 font-mono text-xs">
-                            <div className="flex justify-between gap-4">
-                              <span>🇺🇸 دولار</span>
-                              <span className="text-accent">١٢,٠٢٥ ل.س</span>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                              <span>🇪🇺 يورو</span>
-                              <span className="text-accent">١٢,٦٥٠ ل.س</span>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                              <span>🥇 ذهب ٢١</span>
-                              <span className="text-accent">٤٨٥,٠٠٠ ل.س</span>
-                            </div>
-                          </div>
-                          <div className="text-[10px] text-muted-foreground mt-2">
-                            آخر تحديث: منذ ٣ دقائق
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Input */}
-                    <div className="p-3 border-t border-border bg-card">
-                      <div className="bg-muted/50 rounded-full px-4 py-2 text-sm text-muted-foreground">
-                        اكتب رسالة...
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Final CTA Section */}
-      <section className="py-24 relative">
-        <div className="absolute inset-0 bg-gradient-to-t from-primary/10 to-transparent" />
-        <div className="container mx-auto px-4 relative">
-          <motion.div
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={staggerContainer}
-            className="text-center max-w-3xl mx-auto"
-          >
-            <motion.h2 
-              variants={fadeInUp}
-              className="text-3xl sm:text-4xl md:text-5xl font-bold mb-6"
-            >
-              جاهز لمتابعة <span className="text-gradient">الأسعار</span>؟
-            </motion.h2>
-            <motion.p 
-              variants={fadeInUp}
-              className="text-lg text-muted-foreground mb-10"
-            >
-              انضم للآلاف من السوريين الذين يتابعون أسعار الصرف معنا
+            <motion.p initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} className="text-zinc-400 text-lg">
+              ٣ خطوات بس وبتصير جاهز
             </motion.p>
-            <motion.div variants={fadeInUp}>
-              <Button variant="glow" size="xl" asChild>
-                <a href="https://t.me/SyriFXBot" target="_blank" rel="noopener noreferrer">
-                  <MessageCircle className="h-5 w-5" />
-                  ابدأ الآن مجاناً
-                  <ArrowLeft className="h-5 w-5 mr-2" />
-                </a>
-              </Button>
-            </motion.div>
-          </motion.div>
+          </div>
+
+          <div className="space-y-8">
+            <StepCard 
+              number={1} 
+              icon={MessageCircle}
+              title="افتح التيليجرام" 
+              description="اضغط على الزر وبيفتح معك البوت مباشرة. ما في تسجيل ولا شي، بس افتح وابدأ."
+            />
+            <StepCard 
+              number={2} 
+              icon={Search}
+              title="اكتب الأمر" 
+              description="اكتب /rate لتشوف الأسعار، أو /convert 100 لتحول مبلغ. بسيطة!"
+            />
+            <StepCard 
+              number={3} 
+              icon={CheckCircle2}
+              title="خلص! بس هيك" 
+              description="البوت بيرد عليك خلال ثانية بالأسعار المحدثة. بتقدر تسأل قديش ما بدك."
+            />
+          </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-8 border-t border-border/50">
-        <div className="container mx-auto px-4">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                <span className="text-xs font-bold text-white">س</span>
-              </div>
-              <span>سيري إف إكس</span>
+      {/* ================================================================= */}
+      {/* WHY US - Pain Points */}
+      {/* ================================================================= */}
+      <section className="py-24 px-4 bg-zinc-900/30">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-3xl sm:text-4xl font-black mb-4">
+              ليش <span className="text-accent">سيري إف إكس</span>؟
+            </motion.h2>
+            <motion.p initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} className="text-zinc-400 text-lg max-w-xl mx-auto">
+              خلينا نكون صريحين... المواقع التانية مليانة إعلانات وبطيئة
+            </motion.p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <FeatureCard icon={Zap} title="سريع كالبرق" description="ما رح تستنى تحميل صفحات. اكتب الأمر وخلال ثانية بتوصلك الأسعار." gradient="from-yellow-500 to-orange-500" delay={0} />
+            <FeatureCard icon={Bell} title="نبهني لما يوصل السعر" description="حدد السعر يلي بدك ياه، ولما يوصل بنبعتلك إشعار. ما بتفوت عليك فرصة." gradient="from-blue-500 to-cyan-500" delay={0.1} />
+            <FeatureCard icon={Shield} title="ما منسجل شي عنك" description="لا إيميل، لا رقم تلفون، ولا حتى اسمك. خصوصيتك محفوظة ١٠٠٪." gradient="from-emerald-500 to-green-500" delay={0.2} />
+            <FeatureCard icon={Clock} title="شغال ٢٤ ساعة" description="الساعة ٣ بالليل وبدك تعرف السعر؟ البوت جاهز. ما بينام!" gradient="from-purple-500 to-pink-500" delay={0.3} />
+            <FeatureCard icon={Coins} title="كل العملات بمكان واحد" description="دولار، يورو، تركي، وحتى أسعار الذهب بكل العيارات. كلو بأمر واحد." gradient="from-accent to-yellow-500" delay={0.4} />
+            <FeatureCard icon={DollarSign} title="حول أي مبلغ" description="بدك تعرف ١٠٠٠ دولار قديش بالليرة؟ اكتب الأمر وبيطلعلك." gradient="from-rose-500 to-red-500" delay={0.5} />
+          </div>
+        </div>
+      </section>
+
+      {/* ================================================================= */}
+      {/* DEMO */}
+      {/* ================================================================= */}
+      <section className="py-24 px-4">
+        <div className="max-w-5xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            <div className="order-2 lg:order-1">
+              <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-3xl sm:text-4xl font-black mb-6">
+                شوف كيف <span className="text-accent">بيشتغل</span>
+              </motion.h2>
+              <motion.p initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} className="text-lg text-zinc-400 mb-8">
+                هي الأوامر يلي بتقدر تستخدمها:
+              </motion.p>
+              <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }} className="space-y-4">
+                {[
+                  { cmd: '/rate', desc: 'شوف كل الأسعار' },
+                  { cmd: '/convert 100', desc: 'حول ١٠٠ دولار لليرة' },
+                  { cmd: '/gold', desc: 'أسعار الذهب' },
+                  { cmd: '/alert 13000', desc: 'نبهني لما الدولار يصير ١٣٠٠٠' },
+                ].map((item, i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <code className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-accent font-mono text-sm">{item.cmd}</code>
+                    <span className="text-zinc-400 text-sm">{item.desc}</span>
+                  </div>
+                ))}
+              </motion.div>
             </div>
-            <div>
-              صُنع بـ ❤️ لسوريا 🇸🇾
-            </div>
-            <div>
-              © {new Date().getFullYear()} جميع الحقوق محفوظة
+            <div className="order-1 lg:order-2">
+              <TelegramChat />
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* ================================================================= */}
+      {/* TESTIMONIALS / Social Proof */}
+      {/* ================================================================= */}
+      <section className="py-24 px-4 bg-zinc-900/30">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-16">
+            <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-3xl sm:text-4xl font-black mb-4">
+              شو قالوا الناس؟
+            </motion.h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {[
+              { name: 'أحمد من دمشق', text: 'أخيراً شي سريع وبدون إعلانات! كل يوم بستخدمه.', emoji: '👨‍💼' },
+              { name: 'سارة من حلب', text: 'البوت سهل كتير، حتى أمي صارت تستخدمه 😄', emoji: '👩' },
+              { name: 'محمد من اللاذقية', text: 'ميزة التنبيهات روعة، ما عاد فوت علي سعر.', emoji: '👨' },
+            ].map((item, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className="bg-zinc-800/50 border border-zinc-700/50 rounded-2xl p-6"
+              >
+                <p className="text-zinc-300 mb-4">"{item.text}"</p>
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{item.emoji}</span>
+                  <span className="text-sm text-zinc-500">{item.name}</span>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ================================================================= */}
+      {/* FAQ */}
+      {/* ================================================================= */}
+      <section className="py-24 px-4">
+        <div className="max-w-2xl mx-auto">
+          <div className="text-center mb-16">
+            <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-3xl sm:text-4xl font-black mb-4">
+              أسئلة شائعة
+            </motion.h2>
+            <motion.p initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} className="text-zinc-400">
+              عندك سؤال؟ يمكن الجواب هون
+            </motion.p>
+          </div>
+
+          <div>
+            <FAQItem 
+              question="البوت فعلاً مجاني؟" 
+              answer="إي والله! ١٠٠٪ مجاني وما في أي رسوم مخفية. استخدمه قديش ما بدك."
+            />
+            <FAQItem 
+              question="من وين بتجيبوا الأسعار؟" 
+              answer="منجمع الأسعار من عدة مصادر موثوقة بالسوق السورية، وبنحدثها كل ٥ دقايق."
+            />
+            <FAQItem 
+              question="لازم سجل حساب؟" 
+              answer="لأ أبداً! بس افتح البوت بالتيليجرام وابدأ استخدم. ما بنطلب منك أي معلومات."
+            />
+            <FAQItem 
+              question="البوت بيشتغل بالليل؟" 
+              answer="البوت شغال ٢٤ ساعة، ٧ أيام بالأسبوع. اسأل وقت ما بدك!"
+            />
+            <FAQItem 
+              question="كيف ميزة التنبيهات بتشتغل؟" 
+              answer="اكتب /alert ١٣٠٠٠ مثلاً، ولما سعر الدولار يوصل هالرقم بنبعتلك إشعار فوراً."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ================================================================= */}
+      {/* FINAL CTA */}
+      {/* ================================================================= */}
+      <section className="py-24 px-4">
+        <div className="max-w-2xl mx-auto text-center">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="bg-gradient-to-b from-zinc-800/50 to-transparent border border-zinc-700/50 rounded-3xl p-8 sm:p-12">
+            <h2 className="text-3xl sm:text-4xl font-black mb-4">
+              جاهز تجرب؟
+            </h2>
+            <p className="text-lg text-zinc-400 mb-8">
+              خلص الكلام، افتح البوت وشوف بنفسك!
+            </p>
+            <motion.a
+              href="https://t.me/SyriFXBot"
+              target="_blank"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="inline-flex items-center gap-3 px-10 py-5 bg-accent hover:bg-accent/90 text-black font-bold text-xl rounded-2xl"
+            >
+              <svg className="w-7 h-7" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.161l-1.97 9.281c-.146.658-.537.818-1.084.508l-3-2.211-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.121l-6.869 4.326-2.96-.924c-.643-.203-.657-.643.136-.953l11.566-4.458c.537-.194 1.006.131.833.939z"/>
+              </svg>
+              يلا افتح البوت!
+              <ArrowLeft className="w-6 h-6" />
+            </motion.a>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ================================================================= */}
+      {/* FOOTER */}
+      {/* ================================================================= */}
+      <footer className="py-6 border-t border-zinc-800/50 px-4">
+        <div className="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-zinc-500">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+              <span className="text-xs font-bold text-white">س</span>
+            </div>
+            سيري إف إكس
+          </div>
+          <div>صُنع بـ ❤️ لسوريا 🇸🇾</div>
+          <div>© {new Date().getFullYear()}</div>
         </div>
       </footer>
     </div>
   )
 }
-
-export default App
