@@ -20,6 +20,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import LiveRates from '@/components/LiveRates'
 
 // =============================================================================
 // ANIMATED COUNTER
@@ -596,12 +597,12 @@ export default function App() {
               <ArrowLeft className="w-5 h-5" />
             </motion.a>
             <motion.a
-              href="#how"
+              href="#rates"
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               className="w-full sm:w-auto flex items-center justify-center gap-2 px-8 py-4 border-2 border-zinc-700 hover:border-zinc-600 text-white font-bold text-lg rounded-2xl"
             >
-              كيف يشتغل؟
+              شوف الأسعار الحية
               <ChevronDown className="w-5 h-5" />
             </motion.a>
           </motion.div>
@@ -645,9 +646,18 @@ export default function App() {
       </section>
 
       {/* ================================================================= */}
-      {/* CITIES & CURRENCIES */}
+      {/* LIVE RATES - Interactive Experience */}
       {/* ================================================================= */}
-      <section className="py-24 px-4 bg-zinc-900/30">
+      <section id="rates" className="py-24 px-4 bg-zinc-900/30">
+        <div className="max-w-4xl mx-auto">
+          <LiveRates />
+        </div>
+      </section>
+
+      {/* ================================================================= */}
+      {/* CITIES & CURRENCIES - Static showcase */}
+      {/* ================================================================= */}
+      <section className="py-24 px-4">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-12">
             <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-3xl sm:text-4xl font-black mb-4">
