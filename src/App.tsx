@@ -11,13 +11,13 @@ import {
   Send,
   Check,
   ChevronDown,
-  DollarSign,
   Coins,
   MessageCircle,
-  Clock,
-  Search,
   CheckCircle2,
   ChevronLeft,
+  MapPin,
+  Globe,
+  RefreshCw,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -50,6 +50,22 @@ function AnimatedCounter({ value, suffix = '' }: { value: number; suffix?: strin
     <span ref={ref} className="tabular-nums">
       {count.toLocaleString('ar-SY')}{suffix}
     </span>
+  )
+}
+
+// =============================================================================
+// CITY BADGE
+// =============================================================================
+function CityBadge({ city, active = false }: { city: string; active?: boolean }) {
+  return (
+    <div className={cn(
+      "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+      active 
+        ? "bg-accent text-black" 
+        : "bg-zinc-800 text-zinc-400 border border-zinc-700"
+    )}>
+      {city}
+    </div>
   )
 }
 
@@ -174,11 +190,12 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
 }
 
 // =============================================================================
-// TELEGRAM CHAT
+// TELEGRAM CHAT - Enhanced with new features
 // =============================================================================
 function TelegramChat() {
   const [messages, setMessages] = useState<Array<{type: 'user' | 'bot', text: string, isTyping?: boolean}>>([])
   const [, setStep] = useState(0)
+  const [selectedCity, setSelectedCity] = useState('دمشق')
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: "-100px" })
 
@@ -186,12 +203,12 @@ function TelegramChat() {
     if (!isInView) return
     
     const chatSequence = [
-      { type: 'user' as const, text: '/rate' },
+      { type: 'user' as const, text: 'button_rate' },
       { type: 'bot' as const, text: 'loading' },
       { type: 'bot' as const, text: 'rates' },
-      { type: 'user' as const, text: '/convert 500' },
+      { type: 'user' as const, text: 'button_city' },
       { type: 'bot' as const, text: 'loading' },
-      { type: 'bot' as const, text: 'convert' },
+      { type: 'bot' as const, text: 'city_changed' },
     ]
     
     const timer = setInterval(() => {
@@ -208,23 +225,28 @@ function TelegramChat() {
             const newMsgs = msgs.filter(m => !m.isTyping)
             return [...newMsgs, { type: 'bot', text: 'rates' }]
           })
-        } else if (currentStep.text === 'convert') {
+        } else if (currentStep.text === 'city_changed') {
+          setSelectedCity('حلب')
           setMessages(msgs => {
             const newMsgs = msgs.filter(m => !m.isTyping)
-            return [...newMsgs, { type: 'bot', text: 'convert' }]
+            return [...newMsgs, { type: 'bot', text: 'city_changed' }]
           })
+        } else if (currentStep.text === 'button_rate') {
+          setMessages(msgs => [...msgs, { type: 'user', text: '💵 الأسعار' }])
+        } else if (currentStep.text === 'button_city') {
+          setMessages(msgs => [...msgs, { type: 'user', text: '🏙 حلب' }])
         } else {
           setMessages(msgs => [...msgs, currentStep])
         }
         return prev + 1
       })
-    }, 1200)
+    }, 1500)
     return () => clearInterval(timer)
   }, [isInView])
 
   return (
     <div ref={ref} className="relative">
-      <div className="relative mx-auto w-[280px]">
+      <div className="relative mx-auto w-[300px]">
         <div className="absolute -inset-8 bg-gradient-to-b from-accent/20 via-primary/10 to-transparent blur-3xl" />
         <motion.div
           initial={{ opacity: 0, y: 50 }}
@@ -249,7 +271,7 @@ function TelegramChat() {
                 </div>
               </div>
             </div>
-            <div className="h-[320px] p-3 space-y-2 overflow-hidden">
+            <div className="h-[360px] p-3 space-y-2 overflow-hidden">
               <AnimatePresence>
                 {messages.map((msg, i) => (
                   <motion.div
@@ -269,35 +291,73 @@ function TelegramChat() {
                     ) : msg.type === 'user' ? (
                       <div className="bg-primary text-white rounded-2xl rounded-bl-sm px-4 py-2 text-sm">{msg.text}</div>
                     ) : msg.text === 'rates' ? (
-                      <div className="bg-zinc-800 rounded-2xl rounded-br-sm p-3 max-w-[85%]">
-                        <div className="text-accent text-xs font-bold mb-2 flex items-center gap-1">
-                          <Coins className="w-3 h-3" />
-                          أسعار اليوم
+                      <div className="bg-zinc-800 rounded-2xl rounded-br-sm p-3 max-w-[90%]">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-accent text-xs font-bold flex items-center gap-1">
+                            <Coins className="w-3 h-3" />
+                            أسعار {selectedCity}
+                          </div>
+                          <div className="flex items-center gap-1 text-[10px] text-zinc-500">
+                            <MapPin className="w-2.5 h-2.5" />
+                            {selectedCity}
+                          </div>
                         </div>
                         <div className="space-y-1.5 text-xs">
                           {[
-                            { flag: '🇺🇸', name: 'دولار', rate: '12,025' },
-                            { flag: '🇪🇺', name: 'يورو', rate: '12,650' },
-                            { flag: '🥇', name: 'ذهب', rate: '485,000' },
+                            { flag: '🇺🇸', name: 'دولار', rate: '14,825', change: '+1.2%' },
+                            { flag: '🇪🇺', name: 'يورو', rate: '15,650', change: '+0.8%' },
+                            { flag: '🇹🇷', name: 'تركي', rate: '420', change: '-0.3%' },
+                            { flag: '🇦🇪', name: 'درهم', rate: '4,035', change: '+0.5%' },
                           ].map((item, i) => (
-                            <div key={i} className="flex justify-between gap-4">
+                            <div key={i} className="flex justify-between items-center gap-2">
                               <span className="text-zinc-400">{item.flag} {item.name}</span>
-                              <span className="font-mono text-white" dir="ltr">{item.rate}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-white" dir="ltr">{item.rate}</span>
+                                <span className={cn(
+                                  "text-[9px] font-bold",
+                                  item.change.startsWith('+') ? "text-emerald-400" : "text-red-400"
+                                )} dir="ltr">{item.change}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex gap-1 mt-2 flex-wrap">
+                          <button className="px-2 py-1 bg-zinc-700 rounded text-[9px] text-zinc-300">📊 كل العملات</button>
+                          <button className="px-2 py-1 bg-zinc-700 rounded text-[9px] text-zinc-300">🏙 المدينة</button>
+                        </div>
+                        <div className="text-[9px] text-zinc-500 mt-2 flex items-center gap-1">
+                          <Check className="w-2.5 h-2.5 text-emerald-500" />
+                          منذ دقيقتين
+                        </div>
+                      </div>
+                    ) : msg.text === 'city_changed' ? (
+                      <div className="bg-zinc-800 rounded-2xl rounded-br-sm p-3 max-w-[90%]">
+                        <div className="text-accent text-xs font-bold mb-2 flex items-center gap-1">
+                          <MapPin className="w-3 h-3" />
+                          تم تغيير المدينة
+                        </div>
+                        <div className="space-y-1.5 text-xs">
+                          {[
+                            { flag: '🇺🇸', name: 'دولار', rate: '14,800', change: '+1.1%' },
+                            { flag: '🇪🇺', name: 'يورو', rate: '15,620', change: '+0.7%' },
+                            { flag: '🇹🇷', name: 'تركي', rate: '418', change: '-0.4%' },
+                            { flag: '🇦🇪', name: 'درهم', rate: '4,028', change: '+0.4%' },
+                          ].map((item, i) => (
+                            <div key={i} className="flex justify-between items-center gap-2">
+                              <span className="text-zinc-400">{item.flag} {item.name}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-white" dir="ltr">{item.rate}</span>
+                                <span className={cn(
+                                  "text-[9px] font-bold",
+                                  item.change.startsWith('+') ? "text-emerald-400" : "text-red-400"
+                                )} dir="ltr">{item.change}</span>
+                              </div>
                             </div>
                           ))}
                         </div>
                         <div className="text-[9px] text-zinc-500 mt-2 flex items-center gap-1">
-                          <Check className="w-2.5 h-2.5 text-emerald-500" />
-                          منذ ٣ دقائق
-                        </div>
-                      </div>
-                    ) : msg.text === 'convert' ? (
-                      <div className="bg-zinc-800 rounded-2xl rounded-br-sm p-3">
-                        <div className="text-accent text-xs font-bold mb-2">💱 تحويل</div>
-                        <div className="bg-zinc-900 rounded-xl p-2 text-center">
-                          <div className="text-zinc-400 text-[10px]">$500 =</div>
-                          <div className="text-xl font-black text-white" dir="ltr">6,012,500</div>
-                          <div className="text-accent text-xs font-bold">ليرة سورية</div>
+                          <MapPin className="w-2.5 h-2.5 text-accent" />
+                          أسعار حلب
                         </div>
                       </div>
                     ) : null}
@@ -306,6 +366,11 @@ function TelegramChat() {
               </AnimatePresence>
             </div>
             <div className="p-2 bg-zinc-900 border-t border-zinc-800">
+              <div className="flex gap-1 mb-2">
+                <button className="flex-1 px-2 py-1.5 bg-primary/20 border border-primary/30 rounded-lg text-[10px] text-primary font-bold">💵 الأسعار</button>
+                <button className="flex-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-[10px] text-zinc-400">💱 تحويل</button>
+                <button className="flex-1 px-2 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-[10px] text-zinc-400">🥇 الذهب</button>
+              </div>
               <div className="flex items-center gap-2 bg-zinc-800 rounded-full px-3 py-2">
                 <input type="text" placeholder="اكتب رسالة..." className="flex-1 bg-transparent text-xs text-white placeholder:text-zinc-500 outline-none" readOnly />
                 <Send className="w-4 h-4 text-accent" />
@@ -344,6 +409,80 @@ function FeatureCard({ icon: Icon, title, description, gradient, delay = 0 }: {
 }
 
 // =============================================================================
+// CITY SHOWCASE
+// =============================================================================
+function CityShowcase() {
+  const cities = [
+    { name: 'دمشق', nameEn: 'Damascus', emoji: '🏛️' },
+    { name: 'حلب', nameEn: 'Aleppo', emoji: '🏰' },
+    { name: 'إدلب', nameEn: 'Idlib', emoji: '🌳' },
+    { name: 'الحسكة', nameEn: 'Al-Hasakah', emoji: '🌾' },
+  ]
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true }}
+      className="flex flex-wrap justify-center gap-3"
+    >
+      {cities.map((city, i) => (
+        <motion.div
+          key={city.nameEn}
+          initial={{ opacity: 0, scale: 0.8 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: i * 0.1 }}
+          whileHover={{ scale: 1.05 }}
+          className="px-4 py-2 bg-zinc-800/50 border border-zinc-700/50 rounded-xl flex items-center gap-2"
+        >
+          <span className="text-xl">{city.emoji}</span>
+          <span className="font-bold text-white">{city.name}</span>
+        </motion.div>
+      ))}
+    </motion.div>
+  )
+}
+
+// =============================================================================
+// CURRENCY GRID
+// =============================================================================
+function CurrencyGrid() {
+  const currencies = [
+    { code: 'USD', flag: '🇺🇸', name: 'دولار' },
+    { code: 'EUR', flag: '🇪🇺', name: 'يورو' },
+    { code: 'TRY', flag: '🇹🇷', name: 'تركي' },
+    { code: 'AED', flag: '🇦🇪', name: 'درهم' },
+    { code: 'SAR', flag: '🇸🇦', name: 'ريال' },
+    { code: 'GBP', flag: '🇬🇧', name: 'استرليني' },
+    { code: 'JOD', flag: '🇯🇴', name: 'دينار أردني' },
+    { code: 'EGP', flag: '🇪🇬', name: 'جنيه مصري' },
+    { code: 'KWD', flag: '🇰🇼', name: 'دينار كويتي' },
+    { code: 'QAR', flag: '🇶🇦', name: 'ريال قطري' },
+    { code: 'LBP', flag: '🇱🇧', name: 'ليرة لبنانية' },
+    { code: 'IQD', flag: '🇮🇶', name: 'دينار عراقي' },
+  ]
+
+  return (
+    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+      {currencies.map((cur, i) => (
+        <motion.div
+          key={cur.code}
+          initial={{ opacity: 0, scale: 0.8 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ delay: i * 0.03 }}
+          className="px-3 py-2 bg-zinc-800/30 border border-zinc-700/30 rounded-lg text-center hover:bg-zinc-800/50 transition-colors"
+        >
+          <span className="text-lg">{cur.flag}</span>
+          <div className="text-[10px] text-zinc-500 mt-1">{cur.name}</div>
+        </motion.div>
+      ))}
+    </div>
+  )
+}
+
+// =============================================================================
 // MAIN APP
 // =============================================================================
 export default function App() {
@@ -372,6 +511,7 @@ export default function App() {
               <span className="text-lg font-black text-white">س</span>
             </div>
             <span className="font-bold text-lg">سيري إف إكس</span>
+            <span className="hidden sm:inline-flex px-2 py-0.5 bg-accent/10 text-accent text-[10px] font-bold rounded-full">v1.1</span>
           </div>
           <motion.a
             href="https://t.me/SyriFXBot"
@@ -397,7 +537,7 @@ export default function App() {
             className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-accent/10 border border-accent/20 text-accent text-sm font-medium mb-8"
           >
             <Sparkles className="w-4 h-4" />
-            مجاني • بدون إعلانات • بدون تسجيل
+            مجاني • ٤ مدن • ١٧+ عملة
           </motion.div>
 
           <motion.h1
@@ -406,21 +546,35 @@ export default function App() {
             transition={{ delay: 0.1 }}
             className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black mb-6 leading-tight"
           >
-            بدك تعرف سعر الدولار؟
+            أسعار الصرف
             <br />
-            <span className="text-accent">خلال ثانية!</span>
+            <span className="text-accent">لكل المدن السورية!</span>
           </motion.h1>
 
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="text-lg sm:text-xl text-zinc-400 mb-10 max-w-xl mx-auto"
+            className="text-lg sm:text-xl text-zinc-400 mb-8 max-w-xl mx-auto"
           >
-            بوت تيليجرام بيعطيك سعر الصرف والذهب بشكل فوري.
+            بوت تيليجرام بيعطيك سعر الصرف والذهب لـ
+            <span className="text-white font-bold"> دمشق، حلب، إدلب، والحسكة</span>
             <br />
-            <span className="text-white">بس افتح التيليجرام واكتب الأمر!</span>
+            مع أكثر من ١٧ عملة!
           </motion.p>
+
+          {/* City badges */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="flex flex-wrap justify-center gap-2 mb-10"
+          >
+            <CityBadge city="🏛️ دمشق" active />
+            <CityBadge city="🏰 حلب" />
+            <CityBadge city="🌳 إدلب" />
+            <CityBadge city="🌾 الحسكة" />
+          </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -452,10 +606,11 @@ export default function App() {
             </motion.a>
           </motion.div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-3xl mx-auto">
-            <CurrencyCard currency="الدولار" flag="🇺🇸" rate="12,025" change={2.4} delay={0.4} />
-            <CurrencyCard currency="اليورو" flag="🇪🇺" rate="12,650" change={1.8} delay={0.5} />
-            <CurrencyCard currency="الذهب" flag="🥇" rate="485,000" change={-0.5} delay={0.6} />
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 max-w-4xl mx-auto">
+            <CurrencyCard currency="الدولار" flag="🇺🇸" rate="14,825" change={1.2} delay={0.4} />
+            <CurrencyCard currency="اليورو" flag="🇪🇺" rate="15,650" change={0.8} delay={0.5} />
+            <CurrencyCard currency="التركي" flag="🇹🇷" rate="420" change={-0.3} delay={0.6} />
+            <CurrencyCard currency="الذهب" flag="🥇" rate="1,440,000" change={0.5} delay={0.7} />
           </div>
         </div>
 
@@ -473,10 +628,10 @@ export default function App() {
         <div className="max-w-5xl mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {[
-              { value: 24, suffix: '/٧', label: 'شغال كل الوقت' },
+              { value: 4, suffix: ' مدن', label: 'دمشق، حلب، إدلب، الحسكة' },
+              { value: 17, suffix: '+ عملة', label: 'كل العملات المتداولة' },
               { value: 5, suffix: ' دقايق', label: 'بتحدث الأسعار' },
-              { value: 100, suffix: '%', label: 'ببلاش' },
-              { value: 0, suffix: '', label: 'بدون تعقيد' },
+              { value: 100, suffix: '%', label: 'مجاني بالكامل' },
             ].map((stat, i) => (
               <motion.div key={i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }} className="text-center">
                 <div className="text-3xl sm:text-4xl font-black text-white mb-1">
@@ -485,6 +640,40 @@ export default function App() {
                 <div className="text-zinc-500 text-sm">{stat.label}</div>
               </motion.div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ================================================================= */}
+      {/* CITIES & CURRENCIES */}
+      {/* ================================================================= */}
+      <section className="py-24 px-4 bg-zinc-900/30">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <motion.h2 initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="text-3xl sm:text-4xl font-black mb-4">
+              <span className="text-accent">٤ مدن</span> و <span className="text-accent">١٧+ عملة</span>
+            </motion.h2>
+            <motion.p initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} className="text-zinc-400 text-lg max-w-xl mx-auto">
+              اختر مدينتك واحصل على الأسعار المحلية
+            </motion.p>
+          </div>
+
+          <div className="space-y-8">
+            <div>
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-accent" />
+                المدن المدعومة
+              </h3>
+              <CityShowcase />
+            </div>
+
+            <div>
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <Globe className="w-5 h-5 text-accent" />
+                العملات المتوفرة
+              </h3>
+              <CurrencyGrid />
+            </div>
           </div>
         </div>
       </section>
@@ -512,15 +701,15 @@ export default function App() {
             />
             <StepCard 
               number={2} 
-              icon={Search}
-              title="اكتب الأمر" 
-              description="اكتب /rate لتشوف الأسعار، أو /convert 100 لتحول مبلغ. بسيطة!"
+              icon={MapPin}
+              title="اختر مدينتك" 
+              description="اختر مدينتك (دمشق، حلب، إدلب، أو الحسكة) والبوت بيحفظ اختيارك للمرات الجاية."
             />
             <StepCard 
               number={3} 
               icon={CheckCircle2}
-              title="خلص! بس هيك" 
-              description="البوت بيرد عليك خلال ثانية بالأسعار المحدثة. بتقدر تسأل قديش ما بدك."
+              title="شوف الأسعار" 
+              description="اضغط على زر الأسعار أو اختر عملة معينة. كل شي بأزرار سهلة!"
             />
           </div>
         </div>
@@ -541,12 +730,12 @@ export default function App() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <FeatureCard icon={Zap} title="سريع كالبرق" description="ما رح تستنى تحميل صفحات. اكتب الأمر وخلال ثانية بتوصلك الأسعار." gradient="from-yellow-500 to-orange-500" delay={0} />
-            <FeatureCard icon={Bell} title="نبهني لما يوصل السعر" description="حدد السعر يلي بدك ياه، ولما يوصل بنبعتلك إشعار. ما بتفوت عليك فرصة." gradient="from-blue-500 to-cyan-500" delay={0.1} />
-            <FeatureCard icon={Shield} title="ما منسجل شي عنك" description="لا إيميل، لا رقم تلفون، ولا حتى اسمك. خصوصيتك محفوظة ١٠٠٪." gradient="from-emerald-500 to-green-500" delay={0.2} />
-            <FeatureCard icon={Clock} title="شغال ٢٤ ساعة" description="الساعة ٣ بالليل وبدك تعرف السعر؟ البوت جاهز. ما بينام!" gradient="from-purple-500 to-pink-500" delay={0.3} />
-            <FeatureCard icon={Coins} title="كل العملات بمكان واحد" description="دولار، يورو، تركي، وحتى أسعار الذهب بكل العيارات. كلو بأمر واحد." gradient="from-accent to-yellow-500" delay={0.4} />
-            <FeatureCard icon={DollarSign} title="حول أي مبلغ" description="بدك تعرف ١٠٠٠ دولار قديش بالليرة؟ اكتب الأمر وبيطلعلك." gradient="from-rose-500 to-red-500" delay={0.5} />
+            <FeatureCard icon={MapPin} title="أسعار كل مدينة" description="كل مدينة إلها أسعارها الخاصة. اختر دمشق، حلب، إدلب، أو الحسكة وشوف الأسعار المحلية." gradient="from-rose-500 to-pink-500" delay={0} />
+            <FeatureCard icon={Globe} title="١٧+ عملة" description="مش بس دولار ويورو! عنا الدرهم، الريال، التركي، الدينار، وكل العملات يلي بتحتاجها." gradient="from-blue-500 to-cyan-500" delay={0.1} />
+            <FeatureCard icon={Zap} title="سريع كالبرق" description="ما رح تستنى تحميل صفحات. اضغط الزر وخلال ثانية بتوصلك الأسعار." gradient="from-yellow-500 to-orange-500" delay={0.2} />
+            <FeatureCard icon={Bell} title="نبهني لما يوصل السعر" description="حدد السعر يلي بدك ياه، ولما يوصل بنبعتلك إشعار. ما بتفوت عليك فرصة." gradient="from-purple-500 to-violet-500" delay={0.3} />
+            <FeatureCard icon={RefreshCw} title="تحويل أي عملة" description="حول أي عملة لليرة السورية بضغطة زر. اختر العملة والمبلغ وخلص!" gradient="from-emerald-500 to-green-500" delay={0.4} />
+            <FeatureCard icon={Shield} title="ما منسجل شي عنك" description="لا إيميل، لا رقم تلفون، ولا حتى اسمك. خصوصيتك محفوظة ١٠٠٪." gradient="from-accent to-yellow-500" delay={0.5} />
           </div>
         </div>
       </section>
@@ -562,17 +751,19 @@ export default function App() {
                 شوف كيف <span className="text-accent">بيشتغل</span>
               </motion.h2>
               <motion.p initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 }} className="text-lg text-zinc-400 mb-8">
-                هي الأوامر يلي بتقدر تستخدمها:
+                كل شي بأزرار سهلة - ما في أوامر معقدة!
               </motion.p>
               <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.2 }} className="space-y-4">
                 {[
-                  { cmd: '/rate', desc: 'شوف كل الأسعار' },
-                  { cmd: '/convert 100', desc: 'حول ١٠٠ دولار لليرة' },
-                  { cmd: '/gold', desc: 'أسعار الذهب' },
-                  { cmd: '/alert 13000', desc: 'نبهني لما الدولار يصير ١٣٠٠٠' },
+                  { btn: '💵 الأسعار', desc: 'شوف أسعار كل العملات' },
+                  { btn: '🏙 المدينة', desc: 'غيّر مدينتك' },
+                  { btn: '📊 كل العملات', desc: 'قائمة بكل العملات المتوفرة' },
+                  { btn: '💱 تحويل', desc: 'حول أي عملة لليرة' },
+                  { btn: '🥇 الذهب', desc: 'أسعار الذهب بكل العيارات' },
+                  { btn: '🔔 تنبيه', desc: 'نبهني لما يوصل السعر' },
                 ].map((item, i) => (
                   <div key={i} className="flex items-center gap-3">
-                    <code className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-accent font-mono text-sm">{item.cmd}</code>
+                    <span className="px-3 py-1.5 bg-zinc-800 border border-zinc-700 rounded-lg text-sm font-bold">{item.btn}</span>
                     <span className="text-zinc-400 text-sm">{item.desc}</span>
                   </div>
                 ))}
@@ -598,9 +789,9 @@ export default function App() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[
-              { name: 'أحمد من دمشق', text: 'أخيراً شي سريع وبدون إعلانات! كل يوم بستخدمه.', emoji: '👨‍💼' },
-              { name: 'سارة من حلب', text: 'البوت سهل كتير، حتى أمي صارت تستخدمه 😄', emoji: '👩' },
-              { name: 'محمد من اللاذقية', text: 'ميزة التنبيهات روعة، ما عاد فوت علي سعر.', emoji: '👨' },
+              { name: 'أحمد من دمشق', text: 'أخيراً شي سريع وبدون إعلانات! كل يوم بستخدمه. وميزة اختيار المدينة روعة!', emoji: '👨‍💼' },
+              { name: 'سارة من حلب', text: 'البوت سهل كتير، حتى أمي صارت تستخدمه 😄 والأسعار دقيقة لحلب!', emoji: '👩' },
+              { name: 'محمد من إدلب', text: 'ميزة التنبيهات روعة، ما عاد فوت علي سعر. وكل العملات موجودة!', emoji: '👨' },
             ].map((item, i) => (
               <motion.div
                 key={i}
@@ -641,8 +832,12 @@ export default function App() {
               answer="إي والله! ١٠٠٪ مجاني وما في أي رسوم مخفية. استخدمه قديش ما بدك."
             />
             <FAQItem 
-              question="من وين بتجيبوا الأسعار؟" 
-              answer="منجمع الأسعار من عدة مصادر موثوقة بالسوق السورية، وبنحدثها كل ٥ دقايق."
+              question="كيف بختار مدينتي؟" 
+              answer="اضغط على زر 'المدينة' وبتطلعلك قائمة بالمدن (دمشق، حلب، إدلب، الحسكة). اختر مدينتك والبوت بيحفظها للمرات الجاية."
+            />
+            <FAQItem 
+              question="شو العملات المتوفرة؟" 
+              answer="عنا أكثر من ١٧ عملة: الدولار، اليورو، التركي، الدرهم، الريال السعودي، الاسترليني، الدينار الأردني، الجنيه المصري، وغيرها كتير!"
             />
             <FAQItem 
               question="لازم سجل حساب؟" 
@@ -654,7 +849,7 @@ export default function App() {
             />
             <FAQItem 
               question="كيف ميزة التنبيهات بتشتغل؟" 
-              answer="اكتب /alert ١٣٠٠٠ مثلاً، ولما سعر الدولار يوصل هالرقم بنبعتلك إشعار فوراً."
+              answer="اضغط على زر 'تنبيه' وحدد السعر يلي بدك ياه. لما سعر الدولار يوصل هالرقم بنبعتلك إشعار فوراً."
             />
           </div>
         </div>
@@ -699,6 +894,7 @@ export default function App() {
               <span className="text-xs font-bold text-white">س</span>
             </div>
             سيري إف إكس
+            <span className="px-2 py-0.5 bg-zinc-800 text-zinc-400 text-[10px] rounded">v1.1.0</span>
           </div>
           <div>صُنع بـ ❤️ لسوريا 🇸🇾</div>
           <div>© {new Date().getFullYear()}</div>
