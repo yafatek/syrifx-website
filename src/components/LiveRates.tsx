@@ -51,9 +51,11 @@ interface ApiResponse {
 // Constants
 // =============================================================================
 
-const API_BASE = import.meta.env.PROD 
-  ? 'https://api.syrifx.com' 
-  : 'https://api-stg.syrifx.com'
+const API_BASE = import.meta.env.VITE_API_URL || (
+  import.meta.env.PROD 
+    ? 'https://api.syrifx.com' 
+    : 'https://api-stg.syrifx.com'
+)
 
 const CITIES = [
   { slug: 'damascus', ar: 'دمشق', emoji: '🏛️' },
